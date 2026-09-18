@@ -1,15 +1,18 @@
 {
-  "id": "/masjid-finder-app",
-  "name": "Masjid Finder Indonesia",
-  "short_name": "Masjid Finder",
-  "description": "Aplikasi untuk menemukan masjid, mushola, langgar dan surau di Indonesia.",
+  "name": "Masjid Finder - Cari Tempat Ibadah Terdekat",
+  "short_name": "MasjidFinder",
+  "description": "Aplikasi PWA untuk menemukan lokasi masjid, mushola, langgar, dan surau terdekat di sekitar Anda.",
+  "id": "/",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f1f5f9",
-  "theme_color": "#0f766e",
+  "display_override": ["standalone", "browser"],
   "orientation": "portrait",
-  "lang": "id-ID",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["utilities", "navigation", "lifestyle"],
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/pointhi/kml-icon-colr/master/icons/place_of_worship/islamic.png",
@@ -26,18 +29,34 @@
   ],
   "screenshots": [
     {
-      "src": "https://raw.githubusercontent.com/pointhi/kml-icon-colr/master/icons/place_of_worship/islamic.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Tampilan Aplikasi"
-    },
-    {
-      "src": "https://raw.githubusercontent.com/pointhi/kml-icon-colr/master/icons/place_of_worship/islamic.png",
-      "sizes": "512x512",
+      "src": "https://via.placeholder.com/1280x720/0f766e/ffffff?text=Masjid+Finder+Desktop",
+      "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Tampilan Desktop"
+      "label": "Tampilan Desktop Masjid Finder"
+    },
+    {
+      "src": "https://via.placeholder.com/750x1334/0f766e/ffffff?text=Masjid+Finder+Mobile",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tampilan Mobile Masjid Finder"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Cari Terdekat",
+      "short_name": "Terdekat",
+      "description": "Temukan masjid terdekat dari posisi Anda saat ini",
+      "url": "./index.html?action=nearest",
+      "icons": [
+        {
+          "src": "https://raw.githubusercontent.com/pointhi/kml-icon-colr/master/icons/place_of_worship/islamic.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 }
