@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#0f766e",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "lang": "id-ID",
   "scope": "./",
   "icons": [

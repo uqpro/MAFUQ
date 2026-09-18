@@ -1,11 +1,14 @@
-const CACHE_NAME = 'masjid-finder-v5';
+const CACHE_NAME = 'masjid-finder-v6';
 
 const EXTERNAL_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css',
+  'https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js'
 ];
 
 self.addEventListener('install', event => {
@@ -35,7 +38,7 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = request.url;
 
-  // Jangan cache request ke Google Apps Script dan OpenStreetMap
+  // Lewati caching untuk request data dinamis dan API luar
   if (
     url.includes('overpass-api.de') ||
     url.includes('kumi.systems') ||
@@ -48,21 +51,28 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
 
   event.respondWith(
-    fetch(request)
-      .then(response => {
+    caches.match(request).then(cachedResponse => {
+      if (cachedResponse) {
+        // Ambil versi terbaru secara background
+        fetch(request).then(response => {
+          if (response && response.status === 200) {
+            caches.open(CACHE_NAME).then(cache => cache.put(request, response));
+          }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+
+      return fetch(request).then(response => {
         if (response && response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
         }
         return response;
-      })
-      .catch(() => {
-        return caches.match(request).then(cachedResponse => {
-          if (cachedResponse) return cachedResponse;
-          if (request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-      })
+      }).catch(() => {
+        if (request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+      });
+    })
   );
 });
