@@ -9,7 +9,7 @@
 
   <!-- PWA Manifest & Favicon -->
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Mosque_icon.svg/192px-Mosque_icon.svg.png" type="image/png">
+  <link rel="icon" href="https://raw.githubusercontent.com/pointhi/kml-icon-colr/master/icons/place_of_worship/islamic.png" type="image/png">
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" />
@@ -259,7 +259,6 @@ function initMap() {
     attribution: '&copy; OpenStreetMap' 
   }).addTo(map);
 
-  // Inisialisasi Marker Cluster untuk performa optimal di mobile
   markerCluster = L.markerClusterGroup({
     chunkedLoading: true,
     maxClusterRadius: 50,
@@ -276,7 +275,6 @@ function initMap() {
     }
   });
 
-  // Perbaiki rendering peta pada layar HP
   setTimeout(() => map.invalidateSize(), 500);
 }
 
@@ -308,7 +306,7 @@ function loadNearby() {
   showLoading('Mencari tempat ibadah di sekitar...');
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 detik timeout untuk mobile
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   fetch(`${GAS_API_URL}?action=getPlaces&lat=${userLocation.lat}&lon=${userLocation.lon}&radius=${radius}`, { signal: controller.signal })
     .then(res => res.json())
@@ -324,7 +322,6 @@ function loadNearby() {
     })
     .catch(() => {
       clearTimeout(timeoutId);
-      // Fallback Overpass Client-side jika Backend GAS Lambat/Timeout
       fetchOsmClientSide(userLocation.lat, userLocation.lon, radius);
     });
 }
@@ -360,6 +357,13 @@ function fetchOsmClientSide(lat, lon, radiusMeters) {
 function locateUser() {
   if (!navigator.geolocation) return alert('GPS tidak didukung pada perangkat ini.');
   showLoading('Mendapatkan koordinat GPS...');
+
+  // Pengaturan GPS yang disesuaikan untuk mencegah Timeout
+  const options = {
+    enableHighAccuracy: false, // Memakai jaringan seluler/Wi-Fi agar lebih cepat
+    timeout: 25000,            // Waktu tunggu diperpanjang menjadi 25 detik
+    maximumAge: 300000         // Pakai lokasi tersimpan dalam 5 menit terakhir jika ada
+  };
   
   navigator.geolocation.getCurrentPosition(
     pos => {
@@ -372,9 +376,15 @@ function locateUser() {
     },
     err => { 
       hideLoading(); 
-      alert('Gagal mendapatkan lokasi GPS: ' + err.message); 
+      if (err.code === err.TIMEOUT) {
+        alert('Gagal mengambil lokasi (Timeout). Pastikan GPS di HP sudah AKTIF dan coba berada di area yang terbuka, lalu tekan tombol "Lokasi Saya" lagi.');
+      } else if (err.code === err.PERMISSION_DENIED) {
+        alert('Izin lokasi ditolak. Harap izinkan akses lokasi untuk browser ini di pengaturan HP.');
+      } else {
+        alert('Gagal mendapatkan lokasi GPS: ' + err.message); 
+      }
     },
-    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    options
   );
 }
 
