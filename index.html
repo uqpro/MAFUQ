@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f766e">
+  <title>Masjid Finder</title>
+
+  <!-- PWA Manifest & Favicon -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Mosque_icon.svg/192px-Mosque_icon.svg.png" type="image/png">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; margin: 0; padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f1f5f9; color: #0f172a; overflow: hidden;
+    }
+    header {
+      height: 60px; background: linear-gradient(135deg, #065f46, #0f766e);
+      color: white; display: flex; align-items: center; padding: 0 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.15); position: relative; z-index: 1000;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: rgba(255,255,255,.15); display: flex; align-items: center;
+      justify-content: center; font-size: 24px;
+    }
+    .brand-title { font-size: 22px; font-weight: 700; }
+    .brand-subtitle { font-size: 12px; opacity: .85; }
+    .app {
+      height: calc(100vh - 60px); width: 100vw;
+      display: flex; flex-direction: row; position: relative;
+    }
+    .sidebar {
+      width: 360px; min-width: 360px; height: 100%; background: white;
+      padding: 16px; overflow-y: auto; border-right: 1px solid #e2e8f0;
+      z-index: 1001; position: relative;
+    }
+    .search-box { display: flex; gap: 8px; margin-bottom: 12px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1;
+      border-radius: 10px; font-size: 14px; outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,.1);
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    button { border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-primary { background: #0f766e; color: white; }
+    .btn-primary:hover { background: #115e59; }
+    .btn-secondary { background: #e2e8f0; color: #0f172a; }
+    .btn-location { background: #2563eb; color: white; width: 100%; margin-bottom: 10px; }
+    .btn-add { background: #16a34a; color: white; width: 100%; margin-bottom: 16px; }
+    .btn-pick { background: #0284c7; color: white; margin-top: 6px; width: 100%; }
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .status { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-bottom: 12px; font-size: 13px; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+    .stat { padding: 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .stat-number { font-size: 22px; font-weight: 700; color: #0f766e; }
+    .stat-label { font-size: 11px; color: #64748b; }
+    .place-list { display: flex; flex-direction: column; gap: 8px; }
+    .place-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; cursor: pointer; transition: .2s; background: white; }
+    .place-card:hover { border-color: #0f766e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.07); }
+    .place-name { font-weight: 700; margin-bottom: 5px; }
+    .place-type { display: inline-block; padding: 3px 7px; background: #dcfce7; color: #166534; border-radius: 20px; font-size: 11px; margin-bottom: 5px; }
+    .place-address { font-size: 12px; color: #64748b; line-height: 1.4; }
+    .distance { font-size: 12px; color: #2563eb; font-weight: 600; margin-top: 6px; }
+    .map-wrapper { flex: 1; height: 100%; position: relative; background: #e5e7eb; }
+    #map { width: 100%; height: 100%; min-height: 300px; z-index: 1; }
+    .map-tools { position: absolute; right: 15px; top: 15px; z-index: 500; display: flex; flex-direction: column; gap: 8px; }
+    .map-tool { background: white; border: 1px solid #cbd5e1; box-shadow: 0 3px 10px rgba(0,0,0,.15); padding: 10px 13px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .modal { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+    .modal.active { display: flex; }
+    .modal-content { width: min(500px, 100%); max-height: 90vh; overflow-y: auto; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+    .modal-title { font-size: 20px; font-weight: 700; }
+    .close { width: 35px; height: 35px; padding: 0; border-radius: 50%; background: #f1f5f9; font-size: 20px; }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 600; }
+    .coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 15px; }
+    .modal-actions button { flex: 1; }
+    .loading { position: fixed; inset: 0; background: rgba(255,255,255,.75); display: none; align-items: center; justify-content: center; z-index: 3000; }
+    .loading.active { display: flex; }
+    .loading-box { background: white; padding: 20px 25px; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.2); text-align: center; }
+    .spinner { width: 35px; height: 35px; border: 4px solid #e2e8f0; border-top-color: #0f766e; border-radius: 50%; animation: spin .8s linear infinite; margin: auto auto 10px; }
+    .custom-mosque-icon { background: #0f766e; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+    .custom-mosque-icon svg { fill: #ffffff; width: 18px; height: 18px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 800px) {
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; min-width: 100%; height: 45%; border-right: 0; border-bottom: 1px solid #e2e8f0; }
+      .map-wrapper { height: 55%; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">🕌</div>
+    <div>
+      <div class="brand-title">Masjid Finder</div>
+      <div class="brand-subtitle">Temukan tempat ibadah di Indonesia</div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Cari nama masjid / mushola..." oninput="filterPlaces()">
+    </div>
+
+    <div class="filter-row">
+      <select id="typeFilter" onchange="filterPlaces()">
+        <option value="SEMUA">Semua jenis</option>
+        <option value="Masjid">Masjid</option>
+        <option value="Mushola">Mushola</option>
+        <option value="Langgar">Langgar</option>
+        <option value="Surau">Surau</option>
+      </select>
+
+      <select id="radiusFilter">
+        <option value="2000">2 km</option>
+        <option value="5000" selected>5 km</option>
+        <option value="10000">10 km</option>
+        <option value="25000">25 km</option>
+      </select>
+    </div>
+
+    <button class="btn-location" onclick="findNearest()">📍 Cari Tempat Terdekat</button>
+    <button class="btn-add" onclick="startAddPlace()">＋ Tambah Tempat Ibadah</button>
+
+    <div class="status" id="status">Sistem siap.</div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-number" id="totalPlaces">0</div>
+        <div class="stat-label">Tempat ditemukan</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" id="nearestDistance">-</div>
+        <div class="stat-label">Jarak terdekat</div>
+      </div>
+    </div>
+
+    <div class="place-list" id="placeList"></div>
+  </aside>
+
+  <main class="map-wrapper">
+    <div id="map"></div>
+    <div class="map-tools">
+      <button class="map-tool" onclick="locateUser()">📍 Lokasi Saya</button>
+      <button class="map-tool" onclick="resetMap()">🇮🇩 Indonesia</button>
+      <button class="map-tool" onclick="loadNearby()">🔄 Refresh</button>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL ADD PLACE -->
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Tambah Tempat Ibadah</div>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nama tempat *</label>
+      <input id="placeName" placeholder="Contoh: Masjid Al-Ikhlas">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Jenis *</label>
+      <select id="placeType">
+        <option value="Masjid">Masjid</option>
+        <option value="Mushola">Mushola</option>
+        <option value="Langgar">Langgar</option>
+        <option value="Surau">Surau</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Alamat</label>
+      <textarea id="placeAddress" placeholder="Alamat lengkap"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Koordinat *</label>
+      <div class="coordinates">
+        <input id="placeLat" type="number" step="any" placeholder="Latitude">
+        <input id="placeLon" type="number" step="any" placeholder="Longitude">
+      </div>
+      <button type="button" class="btn-pick" onclick="enableMapPicker()">📍 Pilih Titik di Peta</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Batal</button>
+      <button class="btn-primary" onclick="savePlace()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="loading" id="loading">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div id="loadingText">Memuat data...</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+// MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbz3NCDZekufd1UHfNegjTghr0v5iAP2viRiMM5DX70QsvRwZ49ZCVDyG0IHHesQK_eX/exec";
+
+let map, markersLayer, places = [], filteredPlaces = [], userLocation = null, userMarker = null, isPickingMode = false;
+
+const mosqueIcon = L.divIcon({
+  className: 'custom-mosque-icon',
+  html: `<svg viewBox="0 0 24 24"><path d="M12,2A3,3 0 0,0 9,5C9,6.25 9.77,7.31 10.86,7.72C8.04,8.81 6,11.58 6,15V21H18V15C18,11.58 15.96,8.81 13.14,7.72C14.23,7.31 15,6.25 15,5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5A1,1 0 0,1 12,6A1,1 0 0,1 11,5A1,1 0 0,1 12,4M10,16H14V21H10V16Z"/></svg>`,
+  iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
+});
+
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl: true }).setView([-2.5, 118.0], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+  markersLayer = L.layerGroup().addTo(map);
+
+  map.on('click', function(e) {
+    if (isPickingMode) {
+      setCoordinates(e.latlng.lat, e.latlng.lng);
+      isPickingMode = false;
+      document.getElementById('addModal').classList.add('active');
+      setStatus('Koordinat dipilih.');
+    }
+  });
+}
+
+function enableMapPicker() {
+  isPickingMode = true;
+  document.getElementById('addModal').classList.remove('active');
+  setStatus('Klik titik tempat ibadah di peta.');
+}
+
+function loadInitialData() {
+  showLoading('Memuat data tempat ibadah...');
+  fetch(`${GAS_API_URL}?action=getLocalPlaces`)
+    .then(res => res.json())
+    .then(res => {
+      places = res.data || [];
+      renderPlaces(places);
+      hideLoading();
+      setStatus('Database lokal dimuat.');
+    })
+    .catch(err => {
+      hideLoading();
+      setStatus('Gagal koneksi Backend GAS. Berjalan offline.');
+    });
+}
+
+function loadNearby() {
+  if (!userLocation) { locateUser(); return; }
+  const radius = document.getElementById('radiusFilter').value;
+  showLoading('Mencari tempat ibadah di sekitar...');
+
+  fetch(`${GAS_API_URL}?action=getPlaces&lat=${userLocation.lat}&lon=${userLocation.lon}&radius=${radius}`)
+    .then(res => res.json())
+    .then(res => {
+      places = res.data || [];
+      calculateDistances();
+      filterPlaces();
+      hideLoading();
+      setStatus(`${places.length} tempat ditemukan.`);
+    })
+    .catch(() => {
+      fetchOsmClientSide(userLocation.lat, userLocation.lon, radius);
+    });
+}
+
+function fetchOsmClientSide(lat, lon, radiusMeters) {
+  const latDegree = radiusMeters / 111000;
+  const lonDegree = radiusMeters / (111000 * Math.cos(lat * Math.PI / 180));
+  const query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](${lat - latDegree},${lon - lonDegree},${lat + latDegree},${lon + lonDegree});way["amenity"="place_of_worship"]["religion"="muslim"](${lat - latDegree},${lon - lonDegree},${lat + latDegree},${lon + lonDegree}););out center;`;
+
+  fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query))
+    .then(res => res.json())
+    .then(data => {
+      const osmPlaces = (data.elements || []).map(el => ({
+        NAMA: (el.tags && el.tags.name) || 'Tempat Ibadah (OSM)',
+        JENIS: 'Masjid',
+        ALAMAT: (el.tags && el.tags['addr:street']) || 'OpenStreetMap POI',
+        LATITUDE: el.lat || (el.center && el.center.lat),
+        LONGITUDE: el.lon || (el.center && el.center.lon)
+      }));
+
+      places = [...places, ...osmPlaces];
+      calculateDistances();
+      filterPlaces();
+      hideLoading();
+    })
+    .catch(() => { hideLoading(); });
+}
+
+function locateUser() {
+  if (!navigator.geolocation) return alert('GPS tidak didukung.');
+  showLoading('Mendapatkan GPS...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      if (userMarker) map.removeLayer(userMarker);
+      userMarker = L.marker([userLocation.lat, userLocation.lon]).addTo(map).bindPopup('<b>📍 Lokasi Anda</b>');
+      map.setView([userLocation.lat, userLocation.lon], 15);
+      hideLoading();
+      loadNearby();
+    },
+    err => { hideLoading(); alert('Gagal lokasi: ' + err.message); }
+  );
+}
+
+function findNearest() {
+  if (!userLocation) return locateUser();
+  calculateDistances();
+  const sorted = places.filter(p => p.distance !== undefined && p.distance !== Infinity).sort((a, b) => a.distance - b.distance);
+  if (!sorted.length) return alert('Tidak ada tempat di sekitar Anda.');
+
+  places = sorted;
+  filterPlaces();
+  const nearest = sorted[0];
+  map.setView([nearest.LATITUDE, nearest.LONGITUDE], 17);
+  document.getElementById('nearestDistance').textContent = formatDistance(nearest.distance);
+}
+
+function calculateDistances() {
+  if (!userLocation) return;
+  places.forEach(p => {
+    p.distance = (p.LATITUDE && p.LONGITUDE) ? distanceInMeters(userLocation.lat, userLocation.lon, p.LATITUDE, p.LONGITUDE) : Infinity;
+  });
+}
+
+function distanceInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+function renderPlaces(data) {
+  markersLayer.clearLayers();
+  data.forEach(p => {
+    if (!p.LATITUDE || !p.LONGITUDE) return;
+    const marker = L.marker([p.LATITUDE, p.LONGITUDE], { icon: mosqueIcon });
+    marker.bindPopup(`<b>🕌 ${escapeHtml(p.NAMA)}</b><br>${escapeHtml(p.JENIS)}<br>${escapeHtml(p.ALAMAT)}`);
+    marker.addTo(markersLayer);
+  });
+  document.getElementById('totalPlaces').textContent = data.length;
+  renderList(data);
+}
+
+function renderList(data) {
+  const list = document.getElementById('placeList');
+  if (!data.length) { list.innerHTML = `<div class="status">Tidak ada data.</div>`; return; }
+  list.innerHTML = data.slice(0, 50).map((p, i) => `
+    <div class="place-card" onclick="focusPlace(${p.LATITUDE}, ${p.LONGITUDE})">
+      <div class="place-name">${i + 1}. ${escapeHtml(p.NAMA)}</div>
+      <div class="place-type">${escapeHtml(p.JENIS)}</div>
+      <div class="place-address">${escapeHtml(p.ALAMAT)}</div>
+      ${p.distance ? `<div class="distance">📏 ${formatDistance(p.distance)}</div>` : ''}
+    </div>`).join('');
+}
+
+function filterPlaces() {
+  const kw = document.getElementById('searchInput').value.toLowerCase().trim();
+  const type = document.getElementById('typeFilter').value;
+  filteredPlaces = places.filter(p => {
+    const matchKw = !kw || String(p.NAMA).toLowerCase().includes(kw);
+    const matchType = type === 'SEMUA' || String(p.JENIS).toLowerCase() === type.toLowerCase();
+    return matchKw && matchType;
+  });
+  renderPlaces(filteredPlaces);
+}
+
+function focusPlace(lat, lon) { if (lat && lon) map.setView([lat, lon], 17); }
+function startAddPlace() { document.getElementById('addModal').classList.add('active'); if (userLocation) setCoordinates(userLocation.lat, userLocation.lon); }
+function setCoordinates(lat, lon) { document.getElementById('placeLat').value = Number(lat).toFixed(7); document.getElementById('placeLon').value = Number(lon).toFixed(7); }
+
+function savePlace() {
+  const place = {
+    nama: document.getElementById('placeName').value.trim(),
+    jenis: document.getElementById('placeType').value,
+    alamat: document.getElementById('placeAddress').value.trim(),
+    latitude: document.getElementById('placeLat').value,
+    longitude: document.getElementById('placeLon').value
+  };
+
+  if (!place.nama || !place.latitude || !place.longitude) return alert('Nama dan Koordinat wajib diisi!');
+  showLoading('Menyimpan data...');
+
+  fetch(GAS_API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'addPlace', place: place })
+  })
+  .then(res => res.json())
+  .then(res => {
+    hideLoading();
+    alert(res.message);
+    closeModal();
+    if (res.place) { places.push(res.place); filterPlaces(); }
+  })
+  .catch(() => {
+    hideLoading();
+    alert('Simpan ke server gagal, menyimpan ke memori lokal.');
+    places.push({ NAMA: place.nama, JENIS: place.jenis, ALAMAT: place.alamat, LATITUDE: parseFloat(place.latitude), LONGITUDE: parseFloat(place.longitude) });
+    closeModal();
+    filterPlaces();
+  });
+}
+
+function closeModal() { document.getElementById('addModal').classList.remove('active'); }
+function resetMap() { map.setView([-2.5, 118], 5); }
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+function showLoading(txt) { document.getElementById('loadingText').textContent = txt; document.getElementById('loading').classList.add('active'); }
+function hideLoading() { document.getElementById('loading').classList.remove('active'); }
+function formatDistance(m) { return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(2) + ' km'; }
+function escapeHtml(str) { return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+window.addEventListener('load', function() {
+  initMap();
+  loadInitialData();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(r => console.log('SW Registered', r))
+      .catch(e => console.warn('SW Fail', e));
+  }
+});
+</script>
+
+</body>
+</html>
