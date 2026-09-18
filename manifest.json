@@ -57,6 +57,27 @@
       ]
     }
   ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "application/json": [".json"],
+        "application/vnd.google-earth.kml+xml": [".kml"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "related_applications": [],
   "prefer_related_applications": false
 }
